@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - RAGINSIGHT_DEEPSEEK_API_KEY=${RAGINSIGHT_DEEPSEEK_API_KEY:-}
+      - RAGINSIGHT_DEEPSEEK_BASE_URL=${RAGINSIGHT_DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      - RAGINSIGHT_DEEPSEEK_MODEL=${RAGINSIGHT_DEEPSEEK_MODEL:-deepseek-v4-flash}
+      - RAGINSIGHT_DATABASE_URL=sqlite+aiosqlite:///./raginsight.db
+      - RAGINSIGHT_CHROMA_DB_PATH=./chroma_db
+      - RAGINSIGHT_EMBEDDING_MODEL=${RAGINSIGHT_EMBEDDING_MODEL:-BAAI/bge-small-zh-v1.5}
+      - RAGINSIGHT_ENVIRONMENT=${RAGINSIGHT_ENVIRONMENT:-production}
+    volumes:
+      - backend_data:/app/chroma_db
+      - ./backend/raginsight.db:/app/raginsight.db
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_data:

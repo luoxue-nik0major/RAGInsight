@@ -1,0 +1,487 @@
+{
+  "version": "1.0",
+  "description": "Extended Chinese poetry test queries with 50 entries covering simple_fact, multi_hop, comparison, unanswerable, causal, and definition types.",
+  "queries": [
+    {
+      "id": 101,
+      "query": "李白写过哪些关于月亮的诗？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 102,
+      "query": "杜甫的《春望》写于什么时期？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 103,
+      "query": "王维的《山居秋暝》描写了什么场景？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 104,
+      "query": "孟浩然的《春晓》表达了什么情感？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 105,
+      "query": "白居易的《长恨歌》讲述了什么故事？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 106,
+      "query": "李商隐的《锦瑟》中用了哪些典故？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 107,
+      "query": "王昌龄的《出塞》表达了什么主题？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 108,
+      "query": "杜牧的《泊秦淮》讽刺了什么？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 109,
+      "query": "什么是七言绝句？",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 110,
+      "query": "骆宾王的《在岳咏蝉》表达了什么志向？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 111,
+      "query": "李白和杜甫的友谊与他们的诗歌风格有什么关系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 112,
+      "query": "王维的山水诗与他的隐居生活有什么联系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 113,
+      "query": "白居易的《琵琶行》与他的贬谪经历有什么关系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 114,
+      "query": "李商隐的无题诗与他的爱情经历有什么关联？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": [
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 115,
+      "query": "孟浩然的田园诗与王维的田园诗在主题上有什么共同之处？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 116,
+      "query": "杜甫的《登高》与他的晚年生活有什么关系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 117,
+      "query": "李白的浪漫主义风格与他的游历经历有什么联系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": [
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 118,
+      "query": "王昌龄的边塞诗与唐代边疆战事有什么关系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 119,
+      "query": "比较李白和杜甫的诗歌风格",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 120,
+      "query": "比较王维和孟浩然的山水田园诗",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 121,
+      "query": "李商隐和杜牧的诗歌风格有什么不同？",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 122,
+      "query": "比较白居易的《长恨歌》和《琵琶引》的主题差异",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 123,
+      "query": "王昌龄和王之涣的边塞诗有什么异同？",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 124,
+      "query": "刘禹锡和柳宗元的诗歌在风格上有什么区别？",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 125,
+      "query": "比较高适和岑参的边塞诗风格",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": [
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 126,
+      "query": "李白写过关于火星的诗吗？",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": [
+        "empty_results"
+      ]
+    },
+    {
+      "id": 127,
+      "query": "杜甫有没有写过关于电脑的诗？",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": [
+        "empty_results"
+      ]
+    },
+    {
+      "id": 128,
+      "query": "王维和孟浩然有没有一起去过月球？",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": [
+        "empty_results"
+      ]
+    },
+    {
+      "id": 129,
+      "query": "白居易的《长恨歌》中有没有提到手机？",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": [
+        "empty_results",
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 130,
+      "query": "唐代诗人有没有写过关于人工智能的诗？",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": [
+        "empty_results"
+      ]
+    },
+    {
+      "id": 131,
+      "query": "杜甫在安史之乱期间写了哪些诗，这些诗反映了什么社会现实？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "graph",
+      "expected_alerts": [
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 132,
+      "query": "王之涣的《登鹳雀楼》与他的边塞诗在主题上有什么联系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": [
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 133,
+      "query": "苏轼的《水调歌头》与他的贬谪经历有什么关系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 134,
+      "query": "李白的借酒抒怀与传统文人诗酒文化有什么关系？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 135,
+      "query": "白居易的新乐府运动与他的政治主张有什么关联？",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "graph",
+      "expected_alerts": [
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 136,
+      "query": "比较唐诗和宋词在意象运用上的差异",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "graph",
+      "expected_alerts": [
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 137,
+      "query": "李白的绝句与杜甫的律诗在艺术手法上有什么不同？",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 138,
+      "query": "唐代诗人有没有写过关于元宇宙的作品？",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": [
+        "empty_results"
+      ]
+    },
+    {
+      "id": 139,
+      "query": "李白写过关于相对论的诗吗？",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": [
+        "empty_results"
+      ]
+    },
+    {
+      "id": 140,
+      "query": "请详细描述唐诗宋词的发展脉络，包括初唐、盛唐、中唐、晚唐的代表诗人及其风格特点，以及宋词的豪放派和婉约派的主要区别。",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 141,
+      "query": "唐代诗人是唐代诗人吗唐代诗人唐代？",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": [
+        "low_relevance"
+      ]
+    },
+    {
+      "id": 142,
+      "query": "什么是近体诗？",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 143,
+      "query": "什么是词的婉约派？",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 144,
+      "query": "诗歌中的意象是什么？",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 145,
+      "query": "为什么杜甫被称为诗史？",
+      "category": "causal",
+      "expected_answer_type": "explanatory",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 146,
+      "query": "为什么说李白的诗具有浪漫主义风格？",
+      "category": "causal",
+      "expected_answer_type": "explanatory",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 147,
+      "query": "初唐四杰指的是哪些诗人？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 148,
+      "query": "唐代边塞诗的代表诗人有哪些？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 149,
+      "query": "元稹和白居易共同倡导了什么文学运动？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 150,
+      "query": "宋词的豪放派代表人物有哪些？",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    }
+  ]
+}

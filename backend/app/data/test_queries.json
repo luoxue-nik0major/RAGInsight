@@ -1,0 +1,276 @@
+{
+  "version": "1.0",
+  "description": "RAGInsight Phase 5 experiment dataset: 30 test queries covering simple facts, multi-hop, comparison, and unanswerable queries.",
+  "queries": [
+    {
+      "id": 1,
+      "query": "What is the capital of France?",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 2,
+      "query": "What is machine learning?",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 3,
+      "query": "Tell me about the Eiffel Tower.",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 4,
+      "query": "What is the Louvre museum?",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 5,
+      "query": "Where is the Seine River located?",
+      "category": "simple_fact",
+      "expected_answer_type": "factual",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 6,
+      "query": "What is deep learning?",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 7,
+      "query": "What is natural language processing?",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 8,
+      "query": "What is a vector database?",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 9,
+      "query": "What is the Transformer architecture?",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 10,
+      "query": "What is BERT?",
+      "category": "simple_fact",
+      "expected_answer_type": "definition",
+      "expected_depth": 1,
+      "recommended_strategy": "vector",
+      "expected_alerts": []
+    },
+    {
+      "id": 11,
+      "query": "How are machine learning and deep learning related to artificial intelligence?",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 12,
+      "query": "What is the connection between the Eiffel Tower and Gustave Eiffel?",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 13,
+      "query": "How does the Seine River relate to Paris and France?",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 14,
+      "query": "What is the relationship between BERT, GPT, and the Transformer architecture?",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": ["low_relevance"]
+    },
+    {
+      "id": 15,
+      "query": "How are vector databases used in retrieval-augmented generation systems?",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": ["low_relevance"]
+    },
+    {
+      "id": 16,
+      "query": "What connects Paris, the Seine River, and the Louvre museum?",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 17,
+      "query": "How does deep learning relate to natural language processing and computer vision?",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": ["low_relevance"]
+    },
+    {
+      "id": 18,
+      "query": "What is the relationship between FastAPI and React in modern web development?",
+      "category": "multi_hop",
+      "expected_answer_type": "relational",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": ["low_relevance"]
+    },
+    {
+      "id": 19,
+      "query": "Compare machine learning and deep learning.",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 20,
+      "query": "Compare BERT and GPT models.",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 21,
+      "query": "What are the differences between vector databases and graph databases?",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": []
+    },
+    {
+      "id": 22,
+      "query": "Compare Paris and Tokyo as capital cities.",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": ["low_relevance"]
+    },
+    {
+      "id": 23,
+      "query": "What are the similarities and differences between the Eiffel Tower and the Great Wall?",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": ["low_relevance"]
+    },
+    {
+      "id": 24,
+      "query": "Compare supervised learning and unsupervised learning in deep learning.",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": ["low_relevance"]
+    },
+    {
+      "id": 25,
+      "query": "What is the difference between RAG and traditional NLP approaches?",
+      "category": "comparison",
+      "expected_answer_type": "comparative",
+      "expected_depth": 2,
+      "recommended_strategy": "hybrid",
+      "expected_alerts": ["low_relevance"]
+    },
+    {
+      "id": 26,
+      "query": "What is the population of Mars in 2050?",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": ["empty_results"]
+    },
+    {
+      "id": 27,
+      "query": "How does quantum computing affect medieval European politics?",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": ["empty_results"]
+    },
+    {
+      "id": 28,
+      "query": "Who won the FIFA World Cup in 1800?",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": ["empty_results"]
+    },
+    {
+      "id": 29,
+      "query": "What is the relationship between black holes and Roman architecture?",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": ["empty_results", "low_relevance"]
+    },
+    {
+      "id": 30,
+      "query": "How many moons does the planet Vulcan have?",
+      "category": "unanswerable",
+      "expected_answer_type": "none",
+      "expected_depth": 0,
+      "recommended_strategy": "vector",
+      "expected_alerts": ["empty_results"]
+    }
+  ]
+}
