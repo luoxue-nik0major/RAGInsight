@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 from fastapi import APIRouter, HTTPException
+from starlette.concurrency import run_in_threadpool
 from typing import List, Dict, Any
 
 from app.services.experiment_runner import experiment_runner, EXPERIMENT_DIR
@@ -25,6 +26,18 @@ def _load_dataset(dataset_name: str = "squad") -> List[Dict[str, Any]]:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data.get("queries", [])
+
+
+def _read_latest_jsonl() -> List[Dict[str, Any]]:
+    """Read the newest experiment result file (blocking; call via run_in_threadpool)."""
+    files = sorted(
+        [f for f in os.listdir(EXPERIMENT_DIR) if f.endswith(".jsonl")],
+        reverse=True,
+    )
+    if not files:
+        return []
+    with open(os.path.join(EXPERIMENT_DIR, files[0]), "r", encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
 
 
 def _compute_fault_detection_metrics(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -193,13 +206,9 @@ async def get_experiment_metrics():
     results = experiment_runner.get_latest_results()
     if not results:
         # Try loading from latest file
-        files = sorted(
-            [f for f in os.listdir(EXPERIMENT_DIR) if f.endswith(".jsonl")],
-            reverse=True,
-        )
-        if files:
-            with open(os.path.join(EXPERIMENT_DIR, files[0]), "r", encoding="utf-8") as f:
-                results = [json.loads(line) for line in f if line.strip()]
+        latest = await run_in_threadpool(_read_latest_jsonl)
+        if latest:
+            results = latest
 
     if not results:
         return {
@@ -280,13 +289,9 @@ async def get_experiment_report():
     """Get experiment report as Markdown."""
     results = experiment_runner.get_latest_results()
     if not results:
-        files = sorted(
-            [f for f in os.listdir(EXPERIMENT_DIR) if f.endswith(".jsonl")],
-            reverse=True,
-        )
-        if files:
-            with open(os.path.join(EXPERIMENT_DIR, files[0]), "r", encoding="utf-8") as f:
-                results = [json.loads(line) for line in f if line.strip()]
+        latest = await run_in_threadpool(_read_latest_jsonl)
+        if latest:
+            results = latest
 
     if not results:
         raise HTTPException(status_code=404, detail="No experiment results available")
@@ -334,13 +339,7 @@ async def get_router_training_data():
         # Generate from latest experiment results
         results = experiment_runner.get_latest_results()
         if not results:
-            files = sorted(
-                [f for f in os.listdir(EXPERIMENT_DIR) if f.endswith(".jsonl")],
-                reverse=True,
-            )
-            if files:
-                with open(os.path.join(EXPERIMENT_DIR, files[0]), "r", encoding="utf-8") as f:
-                    results = [json.loads(line) for line in f if line.strip()]
+            results = await run_in_threadpool(_read_latest_jsonl)
 
         if not results:
             raise HTTPException(status_code=404, detail="No experiment results available. Run full-grid first.")

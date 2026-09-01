@@ -2,6 +2,7 @@ import time
 import re
 from typing import List, Dict, Any, AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.core.models import Session as DBSession, Step, StepType, Chunk, SessionStatus, Alert, AlertSeverity
 from app.services.retriever import retriever_registry
@@ -9,7 +10,7 @@ from app.services.deepseek import deepseek_client
 from app.services.quality import quality_evaluator
 from app.services.root_cause import root_cause_analyzer
 from app.services.complexity import complexity_analyzer
-from app.services.strategy_recommender import strategy_recommender
+from app.services.strategy_recommender import get_recommender
 from app.services.cache import query_cache, answer_cache
 from app.services.answer_evaluator import answer_evaluator
 
@@ -32,9 +33,9 @@ async def run_rag_pipeline(
     all_steps_data: List[Dict[str, Any]] = []
     all_alerts_data: List[Dict[str, Any]] = []
     
-    # 1. Analyze complexity & recommend strategy
-    complexity_result = complexity_analyzer.analyze(query)
-    recommendation = strategy_recommender.recommend(
+    # 1. Analyze complexity & recommend strategy (jieba tokenization is blocking)
+    complexity_result = await run_in_threadpool(complexity_analyzer.analyze, query)
+    recommendation = get_recommender().recommend(
         complexity_result["complexity_score"],
         query,
         {**complexity_result["features"], "question_type": complexity_result["question_type"]},
@@ -81,13 +82,13 @@ async def run_rag_pipeline(
         step_start = time.time()
 
         # Check query cache
-        cached_result = query_cache.get(query, strategy)
+        cached_result = query_cache.get(query, strategy, collection)
         if cached_result:
             retrieve_result = cached_result
         else:
             retriever = retriever_registry.get(strategy)
             retrieve_result = await retriever.retrieve(query, top_k=5, collection_name=collection)
-            query_cache.set(query, strategy, retrieve_result)
+            query_cache.set(query, strategy, retrieve_result, collection)
         
         # Quality evaluation
         quality = quality_evaluator.evaluate_all(query, retrieve_result["chunks"])
@@ -229,15 +230,20 @@ async def run_rag_pipeline(
         # Check answer cache for simple factual queries
         cached_answer = None
         if complexity_result["complexity_score"] < 0.3:
-            cached_answer = answer_cache.get(query, strategy)
+            cached_answer = answer_cache.get(query, strategy, collection)
 
         if cached_answer:
             answer = cached_answer
         elif context_chunks:
-            answer = await deepseek_client.generate_answer(query, context_chunks)
+            # Stream answer tokens to the frontend as they arrive
+            answer_parts: List[str] = []
+            async for token in deepseek_client.generate_answer_stream(query, context_chunks):
+                answer_parts.append(token)
+                yield {"event": "answer_token", "data": {"token": token}}
+            answer = "".join(answer_parts)
             # Cache answer for simple factual queries
             if complexity_result["complexity_score"] < 0.3:
-                answer_cache.set(query, strategy, answer)
+                answer_cache.set(query, strategy, answer, collection)
         else:
             answer = "抱歉，未能在知识库中找到相关信息来回答您的问题。"
 

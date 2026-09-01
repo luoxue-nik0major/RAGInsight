@@ -22,33 +22,36 @@ def extract_entities(text: str):
 
 def build_graph():
     adapter = VectorRetrieverAdapter()
-    all_data = adapter.collection.get(include=["documents", "metadatas"])
 
     G = nx.Graph()
 
-    for idx, (doc_id, content, metadata) in enumerate(zip(all_data["ids"], all_data["documents"], all_data["metadatas"])):
-        # Add chunk node
-        chunk_node = f"chunk:{doc_id}"
-        G.add_node(chunk_node, node_type="chunk", content=content[:200], source=metadata.get("source", ""))
+    # Build from both collections (English + Chinese)
+    for collection in (adapter._collection_en, adapter._collection_zh):
+        all_data = collection.get(include=["documents", "metadatas"])
 
-        # Extract entities
-        entities = extract_entities(content)
-        for ent in entities:
-            ent_node = f"ent:{ent}"
-            if not G.has_node(ent_node):
-                G.add_node(ent_node, node_type="entity", name=ent)
-            # Link entity to chunk
-            G.add_edge(ent_node, chunk_node, edge_type="contains")
+        for idx, (doc_id, content, metadata) in enumerate(zip(all_data["ids"], all_data["documents"], all_data["metadatas"])):
+            # Add chunk node
+            chunk_node = f"chunk:{doc_id}"
+            G.add_node(chunk_node, node_type="chunk", content=content[:200], source=metadata.get("source", ""))
 
-        # Link co-occurring entities
-        for i, e1 in enumerate(entities):
-            for e2 in entities[i + 1:]:
-                e1_node = f"ent:{e1}"
-                e2_node = f"ent:{e2}"
-                if G.has_edge(e1_node, e2_node):
-                    G[e1_node][e2_node]["weight"] = G[e1_node][e2_node].get("weight", 0) + 1
-                else:
-                    G.add_edge(e1_node, e2_node, edge_type="cooccurs", weight=1)
+            # Extract entities
+            entities = extract_entities(content)
+            for ent in entities:
+                ent_node = f"ent:{ent}"
+                if not G.has_node(ent_node):
+                    G.add_node(ent_node, node_type="entity", name=ent)
+                # Link entity to chunk
+                G.add_edge(ent_node, chunk_node, edge_type="contains")
+
+            # Link co-occurring entities
+            for i, e1 in enumerate(entities):
+                for e2 in entities[i + 1:]:
+                    e1_node = f"ent:{e1}"
+                    e2_node = f"ent:{e2}"
+                    if G.has_edge(e1_node, e2_node):
+                        G[e1_node][e2_node]["weight"] = G[e1_node][e2_node].get("weight", 0) + 1
+                    else:
+                        G.add_edge(e1_node, e2_node, edge_type="cooccurs", weight=1)
 
     return G
 

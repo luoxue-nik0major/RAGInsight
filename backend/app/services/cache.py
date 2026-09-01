@@ -11,12 +11,12 @@ class QueryCache:
     def __init__(self, maxsize: int = 100, ttl: int = 300):
         self._cache: Dict[str, Any] = TTLCache(maxsize=maxsize, ttl=ttl)
 
-    def get(self, query: str, strategy: str = "vector") -> Optional[Dict[str, Any]]:
-        key = f"{strategy}:{query}"
+    def get(self, query: str, strategy: str = "vector", collection: str = "") -> Optional[Dict[str, Any]]:
+        key = f"{strategy}:{collection or ''}:{query}"
         return self._cache.get(key)
 
-    def set(self, query: str, strategy: str, result: Dict[str, Any]):
-        key = f"{strategy}:{query}"
+    def set(self, query: str, strategy: str, result: Dict[str, Any], collection: str = ""):
+        key = f"{strategy}:{collection or ''}:{query}"
         self._cache[key] = result
 
     def clear(self):
@@ -29,12 +29,12 @@ class AnswerCache:
     def __init__(self, maxsize: int = 100, ttl: int = 600):
         self._cache: Dict[str, Any] = TTLCache(maxsize=maxsize, ttl=ttl)
 
-    def get(self, query: str, strategy: str = "vector") -> Optional[str]:
-        key = f"{strategy}:{query}"
+    def get(self, query: str, strategy: str = "vector", collection: str = "") -> Optional[str]:
+        key = f"{strategy}:{collection or ''}:{query}"
         return self._cache.get(key)
 
-    def set(self, query: str, strategy: str, answer: str):
-        key = f"{strategy}:{query}"
+    def set(self, query: str, strategy: str, answer: str, collection: str = ""):
+        key = f"{strategy}:{collection or ''}:{query}"
         self._cache[key] = answer
 
     def clear(self):

@@ -113,3 +113,38 @@ class TestEvaluateAll:
             + result["coverage"] * 0.3
         )
         assert result["combined"] == pytest.approx(expected, 0.001)
+
+
+class TestChineseSupport:
+    """Chinese text must use jieba tokenization instead of English word regex."""
+
+    def test_chinese_diversity_not_degenerate(self):
+        """Different Chinese chunks should have positive diversity (was always 0)."""
+        chunks = [
+            {"content": "李白是唐代著名的浪漫主义诗人，被称为诗仙。"},
+            {"content": "杜甫是唐代现实主义诗人，其诗沉郁顿挫，被称为诗史。"},
+        ]
+        result = quality_evaluator.evaluate_diversity(chunks)
+        assert 0.0 < result <= 1.0
+
+    def test_chinese_identical_chunks_zero_diversity(self):
+        chunks = [
+            {"content": "李白是唐代诗人。"},
+            {"content": "李白是唐代诗人。"},
+        ]
+        assert quality_evaluator.evaluate_diversity(chunks) == 0.0
+
+    def test_chinese_coverage_partial(self):
+        """Chinese query keywords should be matched against Chinese chunks."""
+        result = quality_evaluator.evaluate_coverage(
+            "李白的诗歌风格",
+            [{"content": "李白的诗歌风格豪放飘逸，充满想象力。"}],
+        )
+        assert 0.0 < result <= 1.0
+
+    def test_chinese_coverage_none(self):
+        result = quality_evaluator.evaluate_coverage(
+            "杜甫的诗歌",
+            [{"content": "牛顿提出了万有引力定律"}],
+        )
+        assert result == 0.0

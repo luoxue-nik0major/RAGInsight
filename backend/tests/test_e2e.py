@@ -23,6 +23,13 @@ def _mock_retriever(chunks):
     return mock
 
 
+def _patch_answer_stream(text: str):
+    """Patch generate_answer_stream with an async generator yielding the answer."""
+    async def fake_stream(query, context_chunks):
+        yield text
+    return patch("app.services.rag_pipeline.deepseek_client.generate_answer_stream", fake_stream)
+
+
 @pytest.mark.asyncio
 async def test_pipeline_event_sequence(db_session: AsyncSession):
     """Verify SSE event sequence: step -> done."""
@@ -34,8 +41,7 @@ async def test_pipeline_event_sequence(db_session: AsyncSession):
     mock_retriever = _mock_retriever(mock_chunks)
 
     with patch("app.services.rag_pipeline.retriever_registry.get", return_value=mock_retriever):
-        with patch("app.services.rag_pipeline.deepseek_client.generate_answer", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = "Paris is the capital of France. [ref:chunk_0]"
+        with _patch_answer_stream("Paris is the capital of France. [ref:chunk_0]"):
 
             events = []
             async for event in run_rag_pipeline(db_session, "What is the capital of France?", strategy="vector"):
@@ -44,6 +50,7 @@ async def test_pipeline_event_sequence(db_session: AsyncSession):
             event_types = [e["event"] for e in events]
             assert "session_created" in event_types
             assert "step" in event_types
+            assert "answer_token" in event_types  # streaming answer tokens
             assert "done" in event_types
             assert event_types[-1] == "done"
 
@@ -65,8 +72,7 @@ async def test_pipeline_caches_query(db_session: AsyncSession):
         return mock_retriever
 
     with patch("app.services.rag_pipeline.retriever_registry.get", side_effect=get_retriever):
-        with patch("app.services.rag_pipeline.deepseek_client.generate_answer", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = "Cached answer. [ref:chunk_0]"
+        with _patch_answer_stream("Cached answer. [ref:chunk_0]"):
 
             # First run
             events1 = []
@@ -93,8 +99,7 @@ async def test_pipeline_with_hybrid_strategy(db_session: AsyncSession):
     mock_retriever = _mock_retriever(mock_chunks)
 
     with patch("app.services.rag_pipeline.retriever_registry.get", return_value=mock_retriever):
-        with patch("app.services.rag_pipeline.deepseek_client.generate_answer", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = "Answer with [ref:chunk_0]"
+        with _patch_answer_stream("Answer with [ref:chunk_0]"):
 
             events = []
             async for event in run_rag_pipeline(db_session, "Test query", strategy="hybrid"):
@@ -117,8 +122,7 @@ async def test_pipeline_answer_segments(db_session: AsyncSession):
     mock_retriever = _mock_retriever(mock_chunks)
 
     with patch("app.services.rag_pipeline.retriever_registry.get", return_value=mock_retriever):
-        with patch("app.services.rag_pipeline.deepseek_client.generate_answer", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = "First fact [ref:chunk_0]. Second fact [ref:chunk_1]."
+        with _patch_answer_stream("First fact [ref:chunk_0]. Second fact [ref:chunk_1]."):
 
             events = []
             async for event in run_rag_pipeline(db_session, "Test query", strategy="vector"):

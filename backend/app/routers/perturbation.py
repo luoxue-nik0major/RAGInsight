@@ -236,6 +236,21 @@ async def _run_attribution_background(
                     is_approximate=1 if intervention.is_approximate else 0,
                     description=intervention.description,
                 ))
+            # Persist summary into execution_trace so GET can restore the full report
+            result = await db.execute(select(DBSession).where(DBSession.id == session_id))
+            session = result.scalar_one_or_none()
+            if session:
+                session.execution_trace = {
+                    **(session.execution_trace or {}),
+                    "causal_attribution": {
+                        "causal_graph": report.causal_graph,
+                        "original_quality": report.original_quality,
+                        "original_strategy": report.original_strategy,
+                        "total_interventions": report.total_interventions,
+                        "llm_interventions": report.llm_interventions,
+                        "duration_ms": report.duration_ms,
+                    },
+                }
             await db.commit()
 
         # Serialize for task result
@@ -370,9 +385,21 @@ async def get_causal_attribution(
         for k in comp_scores:
             comp_scores[k] = round(comp_scores[k] / total, 4)
 
+    # Restore persisted summary (causal graph etc.) if available
+    result = await db.execute(select(DBSession).where(DBSession.id == session_id))
+    session = result.scalar_one_or_none()
+    summary = ((session.execution_trace or {}).get("causal_attribution") or {}) if session else {}
+
     return {
         "session_id": session_id,
+        "query": session.query if session else "",
         "interventions": [i.model_dump() for i in interventions],
         "component_attributions": comp_scores,
         "total_results": len(rows),
+        "causal_graph": summary.get("causal_graph"),
+        "original_quality": summary.get("original_quality"),
+        "original_strategy": summary.get("original_strategy"),
+        "total_interventions": summary.get("total_interventions"),
+        "llm_interventions": summary.get("llm_interventions"),
+        "duration_ms": summary.get("duration_ms"),
     }

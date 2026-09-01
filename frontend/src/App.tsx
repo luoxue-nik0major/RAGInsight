@@ -12,7 +12,7 @@ import { HighlightProvider } from './contexts/HighlightContext';
 import type {
   Session, SessionListItem, Step, StrategyInfo, RootCause,
   PerturbationResult, PerturbationTask, WhatIfResponse,
-  ComplexityAnalysis,
+  ComplexityAnalysis, AttributionReport, AttributionTask,
 } from './types';
 import axios from 'axios';
 
@@ -30,11 +30,20 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [strategies] = useState<StrategyInfo[]>(defaultStrategies);
 
+  // Streaming answer tokens (answer_generate step in progress)
+  const [streamingAnswer, setStreamingAnswer] = useState('');
+
   // Phase 3: Perturbation state
   const [perturbationTask, setPerturbationTask] = useState<PerturbationTask | null>(null);
   const [perturbationResults, setPerturbationResults] = useState<PerturbationResult[] | null>(null);
   const [whatIfResult, setWhatIfResult] = useState<WhatIfResponse | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Phase 5: Causal attribution state
+  const [attributionTask, setAttributionTask] = useState<AttributionTask | null>(null);
+  const [attributionReport, setAttributionReport] = useState<AttributionReport | null>(null);
+  const [attributionError, setAttributionError] = useState<string | null>(null);
+  const attributionPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Phase 4: Complexity & strategy comparison
   const [complexityAnalysis, setComplexityAnalysis] = useState<ComplexityAnalysis | null>(null);
@@ -101,12 +110,77 @@ function App() {
     };
   }, [perturbationTask?.task_id, perturbationTask?.status]);
 
+  // Poll causal attribution task status
+  useEffect(() => {
+    if (!attributionTask || attributionTask.status === 'completed' || attributionTask.status === 'failed') {
+      if (attributionPollRef.current) {
+        clearInterval(attributionPollRef.current);
+        attributionPollRef.current = null;
+      }
+      return;
+    }
+
+    attributionPollRef.current = setInterval(async () => {
+      try {
+        const res = await axios.get(`/api/tasks/${attributionTask.task_id}/status`);
+        const task = res.data as AttributionTask;
+        setAttributionTask(task);
+        if (task.status === 'completed' && task.result) {
+          setAttributionReport(task.result);
+          clearInterval(attributionPollRef.current!);
+          attributionPollRef.current = null;
+        } else if (task.status === 'failed') {
+          setAttributionError(task.error || '因果归因分析失败');
+          clearInterval(attributionPollRef.current!);
+          attributionPollRef.current = null;
+        }
+      } catch (err) {
+        console.error('Poll attribution task failed:', err);
+      }
+    }, 1500);
+
+    return () => {
+      if (attributionPollRef.current) {
+        clearInterval(attributionPollRef.current);
+        attributionPollRef.current = null;
+      }
+    };
+  }, [attributionTask?.task_id, attributionTask?.status]);
+
   const loadSessions = useCallback(async () => {
     try {
       const res = await axios.get<SessionListItem[]>('/api/sessions');
       setSessions(res.data);
     } catch (err) {
       console.error('Failed to load sessions:', err);
+    }
+  }, []);
+
+  // Load previously saved causal attribution results (if any) for a session
+  const loadAttribution = useCallback(async (sessionId: number, query: string) => {
+    try {
+      const res = await axios.get(`/api/sessions/${sessionId}/causal-attribution`);
+      const d = res.data;
+      const interventions = (d.interventions || []) as AttributionReport['interventions'];
+      // Newer backends persist the full report fields; fall back to synthesized
+      // values only when a field is missing (older sessions saved as null).
+      setAttributionReport({
+        session_id: d.session_id,
+        query: d.query ?? query,
+        original_strategy: d.original_strategy ?? '',
+        original_quality: d.original_quality ?? interventions[0]?.original_quality ?? 0,
+        interventions,
+        component_attributions: d.component_attributions || {},
+        top_contributors: [...interventions]
+          .sort((a, b) => Math.abs(b.quality_delta) - Math.abs(a.quality_delta))
+          .slice(0, 5),
+        causal_graph: d.causal_graph ?? { nodes: [], edges: [], observables: {} },
+        total_interventions: d.total_interventions ?? d.total_results ?? interventions.length,
+        llm_interventions: d.llm_interventions ?? interventions.filter(i => !i.is_approximate).length,
+        duration_ms: d.duration_ms ?? 0,
+      });
+    } catch {
+      // 404 → no saved attribution results yet; leave attributionReport as null
     }
   }, []);
 
@@ -120,6 +194,10 @@ function App() {
       setPerturbationTask(null);
       setPerturbationResults(null);
       setWhatIfResult(null);
+      setAttributionTask(null);
+      setAttributionReport(null);
+      setAttributionError(null);
+      setStreamingAnswer('');
       setLastQuery(query);
       setSelectedStrategy(strategy);
       setLastCollection(collection);
@@ -166,6 +244,12 @@ function App() {
               alerts: [...prev.alerts, event.data as any],
             };
           });
+        } else if (event.event === 'answer_token') {
+          // Only stream into the main view; compare tokens are ignored (CompareView
+          // does not render the answer body)
+          if (target === 'main') {
+            setStreamingAnswer((prev) => prev + (event.data.token || ''));
+          }
         } else if (event.event === 'root_cause') {
           rcSetter(event.data as RootCause);
           setter((prev) => {
@@ -183,7 +267,10 @@ function App() {
           if (sessionId) {
             axios.get<Session>(`/api/sessions/${sessionId}`).then((res) => {
               setter(res.data);
-              if (target === 'main') loadSessions();
+              if (target === 'main') {
+                loadSessions();
+                loadAttribution(sessionId, res.data.query);
+              }
             });
           }
           setIsLoading(false);
@@ -203,7 +290,7 @@ function App() {
       },
       collection,
     );
-  }, [connect, loadSessions]);
+  }, [connect, loadSessions, loadAttribution]);
 
   const handleQuery = useCallback((query: string, strategy: string, collection?: string) => {
     runQuery(query, strategy, 'main', collection);
@@ -221,12 +308,17 @@ function App() {
       setPerturbationTask(null);
       setPerturbationResults(null);
       setWhatIfResult(null);
+      setAttributionTask(null);
+      setAttributionReport(null);
+      setAttributionError(null);
+      setStreamingAnswer('');
       setIsLoading(false);
+      loadAttribution(id, res.data.query);
     } catch (err) {
       setIsLoading(false);
       alert('加载会话失败');
     }
-  }, []);
+  }, [loadAttribution]);
 
   const handleNodeClick = useCallback((step: Step) => {
     setSelectedStep(step);
@@ -260,6 +352,24 @@ function App() {
   const handleAnalyzeComplexity = useCallback((analysis: ComplexityAnalysis) => {
     setComplexityAnalysis(analysis);
   }, []);
+
+  const handleTriggerAttribution = useCallback(async () => {
+    if (!currentSession) return;
+    try {
+      const res = await axios.post(`/api/sessions/${currentSession.id}/causal-attribution`);
+      setAttributionTask({
+        task_id: res.data.task_id,
+        session_id: currentSession.id,
+        status: res.data.status || 'pending',
+        progress: 0,
+        total: 100,
+      });
+      setAttributionReport(null);
+      setAttributionError(null);
+    } catch (err: any) {
+      setAttributionError(err.response?.data?.detail || err.message || '触发因果归因分析失败');
+    }
+  }, [currentSession]);
 
   const handleCompareStrategy = useCallback((strategyId: string) => {
     if (!lastQuery) {
@@ -377,11 +487,16 @@ function App() {
             <DetailPanel
               step={selectedStep}
               session={selectedStep ? null : currentSession}
+              streamingAnswer={streamingAnswer}
               perturbationResults={perturbationResults}
               perturbationTask={perturbationTask}
               whatIfResult={whatIfResult}
+              attributionReport={attributionReport}
+              attributionTask={attributionTask}
+              attributionError={attributionError}
               onTriggerPerturbation={handleTriggerPerturbation}
               onRunWhatIf={handleRunWhatIf}
+              onTriggerAttribution={handleTriggerAttribution}
             />
           }
         />

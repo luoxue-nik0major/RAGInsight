@@ -3,29 +3,76 @@ from typing import List, Dict, Any, Optional, Set
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from starlette.concurrency import run_in_threadpool
 from app.core.config import get_settings
+from app.services.cache import embedding_cache
 from app.utils.text_utils import is_chinese_text, tokenize_for_bm25
 import os
 import json
 
 settings = get_settings()
 
-# Chinese embedding model cache directory (user specified D: drive)
-EMBEDDING_CACHE_DIR = r"D:\1_A_work_code\embeddings"
-os.makedirs(EMBEDDING_CACHE_DIR, exist_ok=True)
+# Embedding model cache directory: configurable via env; defaults to HF cache.
+# Set RAGINSIGHT_EMBEDDING_CACHE_DIR to reuse an existing model directory.
+EMBEDDING_CACHE_DIR = os.environ.get("RAGINSIGHT_EMBEDDING_CACHE_DIR") or None
+if EMBEDDING_CACHE_DIR:
+    os.makedirs(EMBEDDING_CACHE_DIR, exist_ok=True)
+
+# Offline mode: set RAGINSIGHT_EMBEDDING_LOCAL_ONLY=true to forbid model
+# downloads (requires the model to be present in the cache directory).
+_EMBEDDING_LOCAL_ONLY = os.environ.get(
+    "RAGINSIGHT_EMBEDDING_LOCAL_ONLY", "false"
+).lower() == "true"
 
 # Use BAAI/bge-small-zh-v1.5 for Chinese semantic understanding
 # Vector dim: 512 (vs all-MiniLM-L6-v2's 384)
 _chinese_embedding_fn = None
 
+
+class _CachingEmbeddingFunction:
+    """Wrap a ChromaDB embedding function with a per-text TTL cache.
+
+    Avoids repeated embedding inference for identical texts (query cache
+    misses, repeated documents across init runs, etc.).
+    """
+
+    def __init__(self, inner):
+        self._inner = inner
+
+    def __call__(self, input):
+        texts = list(input)
+        results: List[Any] = [None] * len(texts)
+        missing_idx: List[int] = []
+        missing_texts: List[str] = []
+        for i, text in enumerate(texts):
+            hit = embedding_cache.get(text)
+            if hit is None:
+                missing_idx.append(i)
+                missing_texts.append(text)
+            else:
+                results[i] = hit
+        if missing_texts:
+            computed = self._inner(missing_texts)
+            for idx, text, vec in zip(missing_idx, missing_texts, computed):
+                embedding_cache.set(text, vec)
+                results[idx] = vec
+        return results
+
+    def __getattr__(self, name):
+        # Delegate attributes (e.g. ChromaDB's name()/is_legacy()) to inner
+        return getattr(self._inner, name)
+
+
 def _get_embedding_fn():
     global _chinese_embedding_fn
     if _chinese_embedding_fn is None:
-        _chinese_embedding_fn = SentenceTransformerEmbeddingFunction(
-            model_name="BAAI/bge-small-zh-v1.5",
-            cache_folder=EMBEDDING_CACHE_DIR,
-            normalize_embeddings=True,
-            local_files_only=True,
+        _chinese_embedding_fn = _CachingEmbeddingFunction(
+            SentenceTransformerEmbeddingFunction(
+                model_name="BAAI/bge-small-zh-v1.5",
+                cache_folder=EMBEDDING_CACHE_DIR,
+                normalize_embeddings=True,
+                local_files_only=_EMBEDDING_LOCAL_ONLY,
+            )
         )
     return _chinese_embedding_fn
 
@@ -98,7 +145,9 @@ class VectorRetrieverAdapter(RetrieverAdapter):
 
     async def retrieve(self, query: str, top_k: int = 5, collection_name: str = None) -> Dict[str, Any]:
         collection = self._resolve_collection(query, collection_name)
-        results = collection.query(
+        # ChromaDB query + embedding inference are blocking; offload to thread pool
+        results = await run_in_threadpool(
+            collection.query,
             query_texts=[query],
             n_results=top_k,
             include=["documents", "metadatas", "distances"],
@@ -225,7 +274,7 @@ class HybridRetrieverAdapter(RetrieverAdapter):
         # For simplicity, use the language-appropriate index unless explicitly overridden
         if collection_name:
             # Build BM25 for the explicit collection if not already cached
-            self._build_bm25_index_for_collection(collection_name)
+            await run_in_threadpool(self._build_bm25_index_for_collection, collection_name)
             is_chinese = False  # Use the collection-specific BM25
             collection = self._resolve_collection(query, collection_name)
             doc_ids = self._bm25_collection_ids.get(collection_name, [])
@@ -233,15 +282,16 @@ class HybridRetrieverAdapter(RetrieverAdapter):
             metadatas = self._bm25_collection_meta.get(collection_name, [])
             bm25 = self._bm25_collections.get(collection_name)
         else:
-            self._build_bm25_index(is_chinese)
+            await run_in_threadpool(self._build_bm25_index, is_chinese)
             collection = self._collection(query)
             doc_ids = self._doc_ids_zh if is_chinese else self._doc_ids_en
             documents = self._documents_zh if is_chinese else self._documents_en
             metadatas = self._metadatas_zh if is_chinese else self._metadatas_en
             bm25 = self._bm25_zh if is_chinese else self._bm25_en
 
-        # 1. Dense retrieval (vector)
-        dense_results = collection.query(
+        # 1. Dense retrieval (vector) — blocking, offload to thread pool
+        dense_results = await run_in_threadpool(
+            collection.query,
             query_texts=[query],
             n_results=min(top_k * 4, len(documents)),
             include=["documents", "metadatas", "distances"],
@@ -259,9 +309,9 @@ class HybridRetrieverAdapter(RetrieverAdapter):
                 "rank": i + 1,
             }
 
-        # 2. Sparse retrieval (BM25)
-        query_tokens = tokenize_for_bm25(query)
-        bm25_scores = bm25.get_scores(query_tokens)
+        # 2. Sparse retrieval (BM25) — tokenization + scoring are blocking
+        query_tokens = await run_in_threadpool(tokenize_for_bm25, query)
+        bm25_scores = await run_in_threadpool(bm25.get_scores, query_tokens)
         # Get top indices by BM25 score
         top_indices = sorted(
             range(len(bm25_scores)),
@@ -381,7 +431,7 @@ class GraphRetrieverAdapter(RetrieverAdapter):
         return "graph"
 
     async def retrieve(self, query: str, top_k: int = 5, collection_name: str = None) -> Dict[str, Any]:
-        self._build_chunk_map(query, collection_name)
+        await run_in_threadpool(self._build_chunk_map, query, collection_name)
 
         # If no graph available, fall back to vector search
         if self._graph is None:
@@ -451,7 +501,8 @@ class GraphRetrieverAdapter(RetrieverAdapter):
     async def _vector_fallback(self, query: str, top_k: int = 5, collection_name: str = None) -> Dict[str, Any]:
         """Fallback to vector search when graph is unavailable."""
         collection = self._resolve_collection(query, collection_name)
-        results = collection.query(
+        results = await run_in_threadpool(
+            collection.query,
             query_texts=[query],
             n_results=top_k,
             include=["documents", "metadatas", "distances"],

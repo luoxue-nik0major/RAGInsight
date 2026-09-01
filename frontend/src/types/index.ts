@@ -88,8 +88,17 @@ export interface CollectionInfo {
   count: number;
 }
 
+export type SSEEventType =
+  | 'session_created'
+  | 'step'
+  | 'alert'
+  | 'answer_token'
+  | 'root_cause'
+  | 'done'
+  | 'error';
+
 export interface SSEEvent {
-  event: string;
+  event: SSEEventType;
   data: Record<string, any>;
 }
 

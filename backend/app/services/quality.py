@@ -4,8 +4,9 @@ Evaluates from multiple dimensions: relevance, diversity, coverage.
 """
 from typing import List, Dict, Any
 import numpy as np
-from sklearn.metrics.pairwise import cosine_distances
 import re
+
+from app.utils.text_utils import is_chinese_text, tokenize_for_bm25
 
 
 class QualityEvaluator:
@@ -30,7 +31,9 @@ class QualityEvaluator:
             return 1.0  # Single result is trivially diverse
 
         def text_to_words(text: str) -> set:
-            # Simple word extraction, lowercase
+            # Chinese: jieba tokenization; English: word regex, lowercase
+            if is_chinese_text(text):
+                return {w for w in tokenize_for_bm25(text) if w.strip()}
             words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
             return set(words)
 
@@ -43,8 +46,7 @@ class QualityEvaluator:
                     intersection = word_sets[i] & word_sets[j]
                     jaccard_dist = 1 - len(intersection) / len(union)
                     distances.append(jaccard_dist)
-                else:
-                    distances.append(0.0)
+                # Both empty word sets carry no signal; skip the pair.
 
         return float(np.mean(distances)) if distances else 1.0
 
@@ -72,10 +74,16 @@ class QualityEvaluator:
             "nor", "not", "only", "own", "same", "so", "than", "too", "very",
         }
 
-        query_words = set(
-            w.lower() for w in re.findall(r'\b[a-zA-Z]{4,}\b', query)
-            if w.lower() not in stop_words
-        )
+        if is_chinese_text(query):
+            # Chinese: jieba tokens with 2+ characters
+            query_words = {
+                w.strip() for w in tokenize_for_bm25(query) if len(w.strip()) >= 2
+            }
+        else:
+            query_words = set(
+                w.lower() for w in re.findall(r'\b[a-zA-Z]{4,}\b', query)
+                if w.lower() not in stop_words
+            )
 
         if not query_words:
             return 1.0

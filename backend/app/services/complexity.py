@@ -92,7 +92,7 @@ class ComplexityAnalyzer:
 
         # 6. Hop demand
         if is_chinese:
-            conjunction_count = len(re.findall(r'\b(和|与|或|并且|但是|因此|而且|此外)\b', q))
+            conjunction_count = len(re.findall(r'(和|与|或|并且|但是|因此|而且|此外)', q))
             question_mark_count = q.count('?') + q.count('？')
         else:
             conjunction_count = len(re.findall(r'\b(and|or|but|however|therefore|moreover|furthermore)\b', q.lower()))
@@ -168,7 +168,7 @@ class ComplexityAnalyzer:
     def _detect_chinese_question_type(self, query: str) -> str:
         q = query.lower()
         # Multi-hop: multiple questions or multiple conjunctions
-        if q.count('?') + q.count('？') > 1 or len(re.findall(r'\b(和|与|或|并且)\b', q)) > 2:
+        if q.count('?') + q.count('？') > 1 or len(re.findall(r'(和|与|或|并且)', q)) > 2:
             return "multi_hop"
         if any(w in q for w in ["比较", "对比", "差异", "区别", "不同", "vs", "versus", "优势", "劣势", "优缺点"]):
             return "comparative"

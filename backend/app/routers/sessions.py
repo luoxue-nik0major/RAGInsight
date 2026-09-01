@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from typing import List
+from starlette.concurrency import run_in_threadpool
+from typing import Dict, List
 
 from app.core.database import get_db
 from app.core.models import Session as DBSession, Step, Chunk, Alert
@@ -13,11 +14,12 @@ router = APIRouter(prefix="/api", tags=["sessions"])
 
 @router.get("/sessions", response_model=List[SessionListItem])
 async def list_sessions(
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(DBSession).order_by(desc(DBSession.created_at)).limit(limit)
+        select(DBSession).order_by(desc(DBSession.created_at)).offset(offset).limit(limit)
     )
     sessions = result.scalars().all()
     return sessions
@@ -41,19 +43,27 @@ async def get_session(
     )
     steps = steps_result.scalars().all()
     
-    # Build step outputs manually
+    # Batch-load chunks and alerts for all steps (avoid N+1 queries)
+    step_ids = [s.id for s in steps]
+
+    chunks_by_step: Dict[int, list] = {}
+    alerts_by_step: Dict[int, list] = {}
+    if step_ids:
+        chunks_result = await db.execute(
+            select(Chunk).where(Chunk.step_id.in_(step_ids))
+        )
+        for c in chunks_result.scalars().all():
+            chunks_by_step.setdefault(c.step_id, []).append(ChunkOut.model_validate(c))
+
+        step_alerts_result = await db.execute(
+            select(Alert).where(Alert.step_id.in_(step_ids))
+        )
+        for a in step_alerts_result.scalars().all():
+            alerts_by_step.setdefault(a.step_id, []).append(AlertOut.model_validate(a))
+
+    # Build step outputs
     step_outs = []
     for step in steps:
-        chunks_result = await db.execute(
-            select(Chunk).where(Chunk.step_id == step.id)
-        )
-        chunks = [ChunkOut.model_validate(c) for c in chunks_result.scalars().all()]
-        
-        alerts_result = await db.execute(
-            select(Alert).where(Alert.step_id == step.id)
-        )
-        alerts = [AlertOut.model_validate(a) for a in alerts_result.scalars().all()]
-        
         step_outs.append(StepOut(
             id=step.id,
             session_id=step.session_id,
@@ -63,8 +73,8 @@ async def get_session(
             quality_score=step.quality_score,
             duration_ms=step.duration_ms,
             timestamp=step.timestamp,
-            chunks=chunks,
-            alerts=alerts,
+            chunks=chunks_by_step.get(step.id, []),
+            alerts=alerts_by_step.get(step.id, []),
         ))
     
     # Load session-level alerts
@@ -115,5 +125,5 @@ async def list_strategies():
 @router.get("/collections")
 async def list_collections():
     """List available ChromaDB collections."""
-    collections = list_available_collections()
+    collections = await run_in_threadpool(list_available_collections)
     return {"collections": collections, "count": len(collections)}

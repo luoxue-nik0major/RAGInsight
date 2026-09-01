@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 
 from app.services.complexity import complexity_analyzer
-from app.services.strategy_recommender import strategy_recommender
+from app.services.strategy_recommender import get_recommender
 
 router = APIRouter(prefix="/api", tags=["complexity"])
 
@@ -16,7 +16,7 @@ async def analyze_complexity(request: Request):
         raise HTTPException(status_code=400, detail="Query cannot be empty")
 
     complexity = complexity_analyzer.analyze(query)
-    recommendation = strategy_recommender.recommend(
+    recommendation = get_recommender().recommend(
         complexity["complexity_score"],
         query,
         {**complexity["features"], "question_type": complexity["question_type"]},

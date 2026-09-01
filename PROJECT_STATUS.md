@@ -317,7 +317,7 @@ pytest-asyncio==0.24.0
 ```
 
 ### 11.6 测试统计
-- `pytest backend/tests`：48 passed, 0 failed
+- `pytest backend/tests`：114 passed, 0 failed
 - 测试覆盖模块：quality / complexity / root_cause / strategy_recommender / retriever_utils / e2e_pipeline
 
 ---
@@ -329,3 +329,36 @@ pytest-asyncio==0.24.0
 3. **成本控制**：embedding 和复杂度分析全部本地计算；扰动分析优先用 embedding 近似，仅 top-3 调 LLM
 4. **兼容性**：新代码必须与已有数据模型兼容（不删除已有表/字段）
 5. **测试查询**："What is the capital of France?" / "What is machine learning?" / "Tell me about Paris and France"
+
+---
+
+## 12. Bug 修复记录（2026-06-02）
+
+基于全面代码审计完成的 8 项 P0/P1 修复：
+
+1. **依赖补全**：`requirements.txt` 补充 `sentence-transformers==5.4.1`、`matplotlib==3.9.2`（此前 Docker 构建缺依赖必崩）。
+2. **Embedding 路径去硬编码**：`retriever.py` 删除硬编码 `D:\1_A_work_code\embeddings`，改为环境变量 `RAGINSIGHT_EMBEDDING_CACHE_DIR`（默认 HF 缓存目录）+ `RAGINSIGHT_EMBEDDING_LOCAL_ONLY`（默认 false，允许首次下载）。
+3. **缓存 key 加 collection**：`cache.py` 的 QueryCache/AnswerCache key 改为 `strategy:collection:query`，修复切换知识库后命中错误缓存的正确性 bug。
+4. **因果归因去重**：删除 `causal_attribution.py` 末尾重复 append 近似结果的循环（此前归因分数被稀释）。
+5. **中文质量评估修复**：`quality.py` 的 diversity/coverage 改用 `text_utils` 的双语分词（此前中文 diversity 恒 0 误报 low_diversity）。
+6. **中文连词统计修复**：`complexity.py` 两处中文正则去掉 `\b` 词边界（中文无词边界，此前该特征恒 0）。
+7. **图检索真正可用**：修复 `build_knowledge_graph.py`（`adapter.collection` → 遍历 `_collection_en/_collection_zh`），已生成 `app/data/knowledge_graph.json`（5041 节点 / 47197 边），graph 策略不再恒 fallback 到向量检索。
+8. **Docker 与安全**：根目录新增 `.gitignore`（覆盖 .env / *.db / chroma_db / venv / node_modules）；`docker-compose.yml` 加 `env_file: .env.docker` 并删除会覆盖 env_file 的 `${...:-}` 插值行，SQLite 改命名卷挂载，移除废弃的 `version` 字段。
+9. **测试修复**：删除 pytest-asyncio 0.24 已废弃的 session 级 `event_loop` fixture，新增 `backend/pytest.ini`（`asyncio_default_fixture_loop_scope = session`）；新增 cache/中文 quality/中文 complexity/归因去重测试用例。
+
+> 注意：DeepSeek API Key 曾在未受 .gitignore 保护的环境下使用，建议到 DeepSeek 控制台轮换密钥。
+
+### 12.1 "半吊子功能"接线（第 1 周计划，同日完成）
+
+10. **学习型路由接入主流程**：`rag_pipeline.py` 与 `routers/complexity.py` 改用 `get_recommender()` 工厂；`RAGINSIGHT_ROUTER_MODE=learned` 且模型存在时走逻辑回归路由（已实测返回 `router_mode: learned`），否则自动回退启发式。
+11. **EmbeddingCache 接线**：`retriever.py` 新增 `_CachingEmbeddingFunction` 包装器，逐文本缓存 embedding（实测第二次调用 0ms）；三级缓存（检索/答案/Embedding）名实相符。
+12. **前端因果归因上线**：DetailPanel 新增"因果归因"区块挂载此前 277 行的死代码 `CausalGraph.tsx`，复用扰动分析的任务轮询模式；后端 `_run_attribution_background` 把 `causal_graph` 等摘要持久化到 `sessions.execution_trace`，GET 端点恢复历史 session 时返回完整报告。
+13. **Alembic 修复**：初始迁移的 `upgrade()` 从空 `pass` 改为真实建表（排除下一迁移负责的 attribution_results），全新数据库 `alembic upgrade head` 已验证可建全 5 张表。
+14. **文档数字统一**：PROJECT_STATUS / paper/README / 面试八股中的测试数统一为 114。
+
+### 12.2 并发与性能（第 2 周计划，同日完成）
+
+15. **sync-in-async 卸载**：retriever.py 所有 ChromaDB 查询、BM25 建索引/打分、jieba 分词，rag_pipeline.py 的复杂度分析，experiments.py 的实验文件读取，sessions.py 的 collections 列表，均改用 `starlette.concurrency.run_in_threadpool` 卸载到线程池。实测 50 并发复杂度分析 0.57s 完成（此前会在事件循环上串行阻塞）。
+16. **DeepSeek 客户端加固**：`deepseek.py` 增加指数退避重试（429/5xx/超时/网络错误，最多 3 次，1s/2s/4s）；流式接口仅首个 token 前允许重试，避免内容重复。
+17. **sessions.py N+1 修复**：get_session 改为 2 条 IN 批量查询 + Python 分组；list_sessions 增加 `limit(1~100)/offset` 分页参数校验。
+18. **答案流式生成**：pipeline 新增 `answer_token` SSE 事件逐 token 推送；前端逐字渲染流式答案（带闪烁光标），segments 就绪后无缝切换到可信度热力图。e2e 测试同步改为 mock 流式接口并断言 answer_token 事件。

@@ -594,10 +594,6 @@ class CausalAttributionAnalyzer:
                 # Fallback: keep approximate result
                 exact_interventions.append(approx)
 
-        # Add remaining approximate results
-        for i in range(self.exact_top_k, len(approx_results)):
-            exact_interventions.append(approx_results[i])
-
         # Compute normalized attribution scores
         exact_interventions.sort(key=lambda x: abs(x.quality_delta), reverse=True)
         total_abs_delta = sum(abs(r.quality_delta) for r in exact_interventions)

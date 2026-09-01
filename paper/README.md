@@ -74,7 +74,7 @@ All generated figures are in `backend/experiments/paper_figures/`:
 
 ```bash
 cd backend
-pytest tests/ -q  # 76+ tests
+pytest tests/ -q  # 114 tests
 ```
 
 ## Key Configuration

@@ -239,6 +239,32 @@ class TestCausalAttributionAnalyzer:
         assert report.total_interventions > 0
         assert "causal_graph" in report.__dict__ or report.causal_graph is not None
 
+    @pytest.mark.asyncio
+    async def test_no_duplicate_interventions(self):
+        """Regression: results must not double-append approximate interventions."""
+        analyzer = CausalAttributionAnalyzer()
+        chunks = make_mock_chunks(3)
+
+        with patch("app.services.causal_attribution.retriever_registry") as mock_registry:
+            mock_retriever = AsyncMock()
+            mock_retriever.retrieve.return_value = {"chunks": make_mock_chunks(3), "total_found": 3}
+            mock_registry.get.return_value = mock_retriever
+
+            with patch.object(analyzer, "_compute_answer_quality", return_value=0.75):
+                with patch.object(analyzer, "_embed", return_value=np.ones((3, 512), dtype=np.float32)):
+                    report = await analyzer.run_full_attribution(
+                        query="What is AI?",
+                        original_answer="AI is artificial intelligence technology.",
+                        chunks=chunks,
+                        original_strategy="vector",
+                        original_topk=5,
+                        session_trace={},
+                    )
+
+        descriptions = [i.description for i in report.interventions]
+        assert len(descriptions) == len(set(descriptions))
+        assert report.total_interventions == len(report.interventions)
+
 
 class TestComponentType:
     def test_component_types(self):

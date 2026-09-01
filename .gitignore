@@ -90,3 +90,6 @@ data/chinese-poetry/
 简历面试资料/
 phase2-test.png
 raginsight-*.png
+
+# 生成的知识图谱（运行 backend/scripts/build_knowledge_graph.py 重新生成）
+backend/app/data/knowledge_graph.json

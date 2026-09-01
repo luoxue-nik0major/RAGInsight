@@ -67,3 +67,8 @@ class TestChineseQueries:
         assert features["sentence_count"] >= 1
         assert "entity_count" in features
         assert features["entity_count"] >= 1  # 李白 / 杜甫 should be detected
+
+    def test_chinese_conjunctions_counted(self):
+        """Chinese conjunctions must be counted (no word-boundary regex for CJK)."""
+        result = complexity_analyzer.analyze("李白和杜甫与白居易的诗歌")
+        assert result["features"]["hop_demand_score"] > 0

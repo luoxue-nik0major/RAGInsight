@@ -1,12 +1,20 @@
 """Pytest fixtures for RAGInsight backend tests."""
 import os
 import sys
-import asyncio
 from typing import AsyncGenerator
 
-import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+# If the embedding model is already in the local HF cache, skip network
+# reachability checks (huggingface.co may be unreachable or slow). On a fresh
+# machine without the cache, normal online download still applies.
+_hf_model_cache = os.path.join(
+    os.path.expanduser("~"), ".cache", "huggingface", "hub",
+    "models--BAAI--bge-small-zh-v1.5",
+)
+if os.path.exists(_hf_model_cache):
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
 # Ensure backend is in path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -38,11 +46,3 @@ async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
         yield session
         # Rollback after each test to keep isolation
         await session.rollback()
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Override pytest-asyncio's event loop fixture."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()

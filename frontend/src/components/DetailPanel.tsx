@@ -1,15 +1,21 @@
 import { useState, useMemo } from 'react';
 import { useHighlightContext } from '../contexts/HighlightContext';
-import type { Step, Session, Alert, PerturbationResult, PerturbationTask, WhatIfResponse } from '../types';
+import CausalGraph from './CausalGraph';
+import type { Step, Session, Alert, PerturbationResult, PerturbationTask, WhatIfResponse, AttributionReport, AttributionTask } from '../types';
 
 interface Props {
   step: Step | null;
   session: Session | null;
+  streamingAnswer: string;
   perturbationResults: PerturbationResult[] | null;
   perturbationTask: PerturbationTask | null;
   whatIfResult: WhatIfResponse | null;
+  attributionReport: AttributionReport | null;
+  attributionTask: AttributionTask | null;
+  attributionError: string | null;
   onTriggerPerturbation: () => void;
   onRunWhatIf: (removeIndices: number[]) => void;
+  onTriggerAttribution: () => void;
 }
 
 function AlertCard({ alert }: { alert: Alert }) {
@@ -92,11 +98,16 @@ function DiffView({ original, modified }: { original: string; modified: string }
 export default function DetailPanel({
   step,
   session,
+  streamingAnswer,
   perturbationResults,
   perturbationTask,
   whatIfResult,
+  attributionReport,
+  attributionTask,
+  attributionError,
   onTriggerPerturbation,
   onRunWhatIf,
+  onTriggerAttribution,
 }: Props) {
   const { highlightedSegmentIndex, highlightChunks, clearHighlights } = useHighlightContext();
   const [selectedRemoveIndices, setSelectedRemoveIndices] = useState<number[]>([]);
@@ -149,6 +160,8 @@ export default function DetailPanel({
     const allAlerts = session.alerts || [];
     const isPerturbationRunning = !!perturbationTask && perturbationTask.status === 'running';
     const isPerturbationPending = !!perturbationTask && perturbationTask.status === 'pending';
+    const isAttributionRunning = !!attributionTask && attributionTask.status === 'running';
+    const isAttributionPending = !!attributionTask && attributionTask.status === 'pending';
 
     return (
       <div className="h-full bg-white border-l border-gray-200 overflow-y-auto p-4">
@@ -168,7 +181,7 @@ export default function DetailPanel({
               {session.status}
             </span>
           </div>
-          {session.final_answer && (
+          {(session.final_answer || streamingAnswer) && (
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase">最终答案</label>
               {session.execution_trace?.answer_segments ? (
@@ -190,6 +203,13 @@ export default function DetailPanel({
                       {seg.text}
                     </span>
                   ))}
+                </div>
+              ) : streamingAnswer ? (
+                <div className="text-sm text-gray-800 mt-1 p-3 bg-green-50 border border-green-200 rounded-lg whitespace-pre-wrap">
+                  {streamingAnswer}
+                  {session.status === 'running' && (
+                    <span className="inline-block w-0.5 h-4 ml-0.5 bg-green-500 animate-pulse align-middle" />
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-gray-800 mt-1 p-3 bg-green-50 border border-green-200 rounded-lg whitespace-pre-wrap">
@@ -333,6 +353,51 @@ export default function DetailPanel({
                     </span>
                   </div>
                   <DiffView original={whatIfResult.original_answer} modified={whatIfResult.new_answer} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Causal Attribution */}
+          {session.status === 'completed' && (
+            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-indigo-800">因果归因</span>
+                <button
+                  onClick={onTriggerAttribution}
+                  disabled={isAttributionRunning || isAttributionPending}
+                  className={`text-xs px-2 py-1 rounded ${
+                    isAttributionRunning || isAttributionPending
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+                >
+                  {isAttributionPending ? '排队中...' : isAttributionRunning ? '分析中...' : attributionReport ? '重新分析' : '开始分析'}
+                </button>
+              </div>
+              {attributionTask && (isAttributionRunning || isAttributionPending) && (
+                <div className="mt-2">
+                  <div className="text-xs text-indigo-600">
+                    进度: {attributionTask.progress} / {attributionTask.total}
+                  </div>
+                  <div className="w-full bg-indigo-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-indigo-600 h-1.5 rounded-full"
+                      style={{ width: `${attributionTask.total > 0 ? (attributionTask.progress / attributionTask.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {attributionError && (
+                <p className="text-xs text-red-600 mt-1">分析失败: {attributionError}</p>
+              )}
+              {(attributionReport || isAttributionRunning || isAttributionPending) && (
+                <div className="mt-2 h-[420px] bg-white border border-indigo-200 rounded overflow-hidden">
+                  <CausalGraph
+                    report={attributionReport}
+                    isLoading={!attributionReport}
+                    onTriggerAttribution={onTriggerAttribution}
+                  />
                 </div>
               )}
             </div>
